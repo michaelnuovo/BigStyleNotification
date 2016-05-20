@@ -2,22 +2,71 @@ package com.example.micha.bigstylenotification;
 
 import android.annotation.SuppressLint;
 import android.app.Notification;
+import android.app.PendingIntent;
 import android.app.Service;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioManager;
+import android.media.RemoteControlClient;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.RemoteViews;
 
 
-public class MyService extends Service implements AudioManager.OnAudioFocusChangeListener{
+public class MyService extends Service implements AudioManager.OnAudioFocusChangeListener {
 
+	private ComponentName remoteComponentName;
+	private RemoteControlClient remoteControlClient;
 
-    private static boolean currentVersionSupportBigNotification = false;
+	private static boolean currentVersionSupportBigNotification = false;
     private static boolean currentVersionSupportLockScreenControls = false;
+
+	AudioManager audioManager;
+
+	// RemoteControlClient enables exposing information meant to be consumed by remote controls capable
+	// of displaying metadata, artwork and media transport control buttons.
+	// A remote control client object is associated with a media button event receiver.
+	// This event receiver must have been previously registered with registerMediaButtonEventReceiver(ComponentName)
+	// before the RemoteControlClient can be registered through registerRemoteControlClient(RemoteControlClient).
+
+	// Here is an example of creating a RemoteControlClient instance after registering a media button event receiver:
+
+	// ComponentName myEventReceiver = new ComponentName(getPackageName(), MyRemoteControlEventReceiver.class.getName());
+	// AudioManager myAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+	// myAudioManager.registerMediaButtonEventReceiver(myEventReceiver);
+
+	// build the PendingIntent for the remote control client
+
+	// Intent mediaButtonIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
+	// mediaButtonIntent.setComponent(myEventReceiver);
+	// PendingIntent mediaPendingIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, mediaButtonIntent, 0);
+	// create and register the remote control client
+	// RemoteControlClient myRemoteControlClient = new RemoteControlClient(mediaPendingIntent);
+	// myAudioManager.registerRemoteControlClient(myRemoteControlClient);
+
+	// https://developer.android.com/reference/android/media/RemoteControlClient.html
+
+	private void RegisterRemoteClient(){
+		remoteComponentName = new ComponentName(getApplicationContext(), new MyReceiver().ComponentName());
+		try {
+			if(remoteControlClient == null) {
+
+				audioManager.registerMediaButtonEventReceiver(remoteComponentName);
+				Intent mediaButtonIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
+				mediaButtonIntent.setComponent(remoteComponentName);
+				PendingIntent mediaPendingIntent = PendingIntent.getBroadcast(this, 0, mediaButtonIntent, 0);
+				remoteControlClient = new RemoteControlClient(mediaPendingIntent);
+				audioManager.registerRemoteControlClient(remoteControlClient);
+
+			}
+
+
+		} catch (Exception ex){
+		}
+	}
 
 
 	@Override
@@ -29,8 +78,14 @@ public class MyService extends Service implements AudioManager.OnAudioFocusChang
 	public void onCreate() {
 
 
+		audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+
         currentVersionSupportBigNotification = Util.currentVersionSupportBigNotification();
         currentVersionSupportLockScreenControls = Util.currentVersionSupportLockScreenControls();
+
+		if(currentVersionSupportLockScreenControls){
+			RegisterRemoteClient();
+		}
 
 		super.onCreate();
 	}
